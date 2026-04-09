@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>DeployFlow 🚀</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: linear-gradient(to right, #0f172a, #1e3a8a);
+      color: white;
+      text-align: center;
+    }
+
+    h1 { color: #38bdf8; }
+
+    .box {
+      background: #1e293b;
+      padding: 20px;
+      margin: 20px auto;
+      width: 300px;
+      border-radius: 10px;
+    }
+
+    input {
+      padding: 10px;
+      width: 70%;
+    }
+
+    button {
+      padding: 10px;
+      background: #38bdf8;
+      border: none;
+      cursor: pointer;
+    }
+
+    li {
+      text-align: left;
+      margin: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>DeployFlow CI/CD 🚀</h1>
+
+<div class="box">
+  <h3>📌 Task Manager</h3>
+  <input id="taskInput" placeholder="Enter task">
+  <button onclick="addTask()">Add</button>
+  <ul id="taskList"></ul>
+</div>
+
+<div class="box">
+  <h3>📊 Deployment Info</h3>
+  <p><b>Version:</b> <span id="version">v1.0</span></p>
+  <p><b>Last Updated:</b> <span id="time"></span></p>
+  <p><b>Status:</b> <span style="color:lightgreen;">Live</span></p>
+</div>
+
+<script>
+  let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+  function renderTasks() {
+    let list = document.getElementById("taskList");
+    list.innerHTML = "";
+    tasks.forEach((task, index) => {
+      list.innerHTML += `<li>${task}
+      <button onclick="deleteTask(${index})">❌</button></li>`;
+    });
+  }
+
+  function addTask() {
+    let input = document.getElementById("taskInput");
+    tasks.push(input.value);
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+    input.value = "";
+    renderTasks();
+  }
+
+  function deleteTask(index) {
+    tasks.splice(index, 1);
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+    renderTasks();
+  }
+
+  document.getElementById("time").innerText = new Date().toLocaleString();
+  renderTasks();
+</script>
+
+</body>
+</html>
