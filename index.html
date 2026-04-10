@@ -2,18 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DeployFlow Dashboard 🚀</title>
+<title>DeployFlow Pro 🚀</title>
 
 <style>
 body {
   font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #1e3a8a, #0f172a);
+  background: linear-gradient(135deg, #0f172a, #1e3a8a);
   color: white;
   text-align: center;
+  transition: 0.3s;
+}
+
+.light {
+  background: #f1f5f9;
+  color: black;
 }
 
 h1 {
-  margin-top: 20px;
   color: #38bdf8;
 }
 
@@ -25,30 +30,36 @@ h1 {
 }
 
 .card {
-  background: #1e293b;
+  backdrop-filter: blur(10px);
+  background: rgba(30,41,59,0.8);
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 15px;
   width: 320px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  transition: 0.3s;
+}
+
+.card:hover {
+  transform: scale(1.03);
 }
 
 input {
   padding: 10px;
-  width: 70%;
-  border: none;
+  width: 65%;
   border-radius: 5px;
 }
 
 button {
   padding: 10px;
-  background: #38bdf8;
-  border: none;
   border-radius: 5px;
   cursor: pointer;
+  background: #38bdf8;
+  border: none;
+  transition: 0.2s;
 }
 
 button:hover {
-  background: #0ea5e9;
+  transform: scale(1.1);
 }
 
 li {
@@ -66,15 +77,24 @@ li {
   color: gray;
 }
 
-.filters button {
-  margin: 5px;
+.stats {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>DeployFlow Dashboard 🚀</h1>
+<button class="toggle" onclick="toggleTheme()">🌙</button>
+
+<h1>DeployFlow Pro 🚀</h1>
 
 <div class="container">
 
@@ -84,21 +104,33 @@ li {
 <input id="taskInput" placeholder="Enter task">
 <button onclick="addTask()">Add</button>
 
-<div class="filters">
+<br><br>
+<input id="search" placeholder="Search..." onkeyup="renderTasks()">
+
+<div>
 <button onclick="filterTasks('all')">All</button>
 <button onclick="filterTasks('completed')">Completed</button>
 <button onclick="filterTasks('pending')">Pending</button>
 </div>
 
 <ul id="taskList"></ul>
+
+<div class="stats">
+Total: <span id="total"></span> |
+Completed: <span id="completed"></span> |
+Pending: <span id="pending"></span>
+</div>
+
 </div>
 
 <div class="card">
 <h3>📊 Deployment Info</h3>
-<p><b>Version:</b> <span id="version">v1.0</span></p>
+
+<p><b>Version:</b> <span id="version">v2.0</span></p>
 <p><b>Last Updated:</b> <span id="time"></span></p>
-<p><b>Status:</b> <span style="color:lightgreen;">Live</span></p>
+<p><b>Status:</b> <span id="status">Deploying...</span></p>
 <p><b>Live Clock:</b> <span id="clock"></span></p>
+
 </div>
 
 </div>
@@ -107,62 +139,84 @@ li {
 let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 let filter = "all";
 
-function saveTasks() {
+function save() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
-}
-
-function renderTasks() {
-  let list = document.getElementById("taskList");
-  list.innerHTML = "";
-
-  tasks
-    .filter(task => {
-      if (filter === "completed") return task.done;
-      if (filter === "pending") return !task.done;
-      return true;
-    })
-    .forEach((task, index) => {
-      list.innerHTML += `
-      <li class="${task.done ? 'completed' : ''}">
-        <span onclick="toggleTask(${index})">${task.text}</span>
-        <button onclick="deleteTask(${index})">❌</button>
-      </li>`;
-    });
 }
 
 function addTask() {
   let input = document.getElementById("taskInput");
-  if (input.value.trim() === "") return;
+  if (!input.value) return alert("Enter task!");
+
   tasks.push({ text: input.value, done: false });
   input.value = "";
-  saveTasks();
+  save();
+  renderTasks();
+
+  alert("Task Added ✅");
+}
+
+function deleteTask(i) {
+  tasks.splice(i, 1);
+  save();
   renderTasks();
 }
 
-function deleteTask(index) {
-  tasks.splice(index, 1);
-  saveTasks();
+function toggleTask(i) {
+  tasks[i].done = !tasks[i].done;
+  save();
   renderTasks();
 }
 
-function toggleTask(index) {
-  tasks[index].done = !tasks[index].done;
-  saveTasks();
+function filterTasks(f) {
+  filter = f;
   renderTasks();
 }
 
-function filterTasks(type) {
-  filter = type;
-  renderTasks();
+function renderTasks() {
+  let list = document.getElementById("taskList");
+  let search = document.getElementById("search").value.toLowerCase();
+  list.innerHTML = "";
+
+  let filtered = tasks.filter(t => {
+    if (filter === "completed") return t.done;
+    if (filter === "pending") return !t.done;
+    return true;
+  }).filter(t => t.text.toLowerCase().includes(search));
+
+  filtered.forEach((t, i) => {
+    list.innerHTML += `
+    <li class="${t.done ? 'completed' : ''}">
+      <span onclick="toggleTask(${i})">${t.text}</span>
+      <button onclick="deleteTask(${i})">❌</button>
+    </li>`;
+  });
+
+  document.getElementById("total").innerText = tasks.length;
+  document.getElementById("completed").innerText = tasks.filter(t=>t.done).length;
+  document.getElementById("pending").innerText = tasks.filter(t=>!t.done).length;
 }
 
-// Deployment info
+// Theme toggle
+function toggleTheme() {
+  document.body.classList.toggle("light");
+}
+
+// Deployment simulation
+setTimeout(()=>{
+  document.getElementById("status").innerText = "Live ✅";
+}, 2000);
+
+// Time
 document.getElementById("time").innerText = new Date().toLocaleString();
 
-// Live clock
-setInterval(() => {
+setInterval(()=>{
   document.getElementById("clock").innerText = new Date().toLocaleTimeString();
-}, 1000);
+},1000);
+
+// Auto refresh (simulate CI/CD)
+setTimeout(()=>{
+  location.reload();
+}, 20000);
 
 renderTasks();
 </script>
