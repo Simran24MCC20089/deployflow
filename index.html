@@ -1,90 +1,170 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>DeployFlow 🚀</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: linear-gradient(to right, #0f172a, #1e3a8a);
-      color: white;
-      text-align: center;
-    }
+<meta charset="UTF-8">
+<title>DeployFlow Dashboard 🚀</title>
 
-    h1 { color: #38bdf8; }
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #1e3a8a, #0f172a);
+  color: white;
+  text-align: center;
+}
 
-    .box {
-      background: #1e293b;
-      padding: 20px;
-      margin: 20px auto;
-      width: 300px;
-      border-radius: 10px;
-    }
+h1 {
+  margin-top: 20px;
+  color: #38bdf8;
+}
 
-    input {
-      padding: 10px;
-      width: 70%;
-    }
+.container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
 
-    button {
-      padding: 10px;
-      background: #38bdf8;
-      border: none;
-      cursor: pointer;
-    }
+.card {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 12px;
+  width: 320px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
 
-    li {
-      text-align: left;
-      margin: 5px;
-    }
-  </style>
+input {
+  padding: 10px;
+  width: 70%;
+  border: none;
+  border-radius: 5px;
+}
+
+button {
+  padding: 10px;
+  background: #38bdf8;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #0ea5e9;
+}
+
+li {
+  list-style: none;
+  margin: 8px;
+  padding: 8px;
+  background: #334155;
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.completed {
+  text-decoration: line-through;
+  color: gray;
+}
+
+.filters button {
+  margin: 5px;
+}
+</style>
 </head>
 
 <body>
 
-<h1>DeployFlow CI/CD 🚀</h1>
+<h1>DeployFlow Dashboard 🚀</h1>
 
-<div class="box">
-  <h3>📌 Task Manager</h3>
-  <input id="taskInput" placeholder="Enter task">
-  <button onclick="addTask()">Add</button>
-  <ul id="taskList"></ul>
+<div class="container">
+
+<div class="card">
+<h3>📌 Task Manager</h3>
+
+<input id="taskInput" placeholder="Enter task">
+<button onclick="addTask()">Add</button>
+
+<div class="filters">
+<button onclick="filterTasks('all')">All</button>
+<button onclick="filterTasks('completed')">Completed</button>
+<button onclick="filterTasks('pending')">Pending</button>
 </div>
 
-<div class="box">
-  <h3>📊 Deployment Info</h3>
-  <p><b>Version:</b> <span id="version">v1.0</span></p>
-  <p><b>Last Updated:</b> <span id="time"></span></p>
-  <p><b>Status:</b> <span style="color:lightgreen;">Live</span></p>
+<ul id="taskList"></ul>
+</div>
+
+<div class="card">
+<h3>📊 Deployment Info</h3>
+<p><b>Version:</b> <span id="version">v1.0</span></p>
+<p><b>Last Updated:</b> <span id="time"></span></p>
+<p><b>Status:</b> <span style="color:lightgreen;">Live</span></p>
+<p><b>Live Clock:</b> <span id="clock"></span></p>
+</div>
+
 </div>
 
 <script>
-  let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let filter = "all";
 
-  function renderTasks() {
-    let list = document.getElementById("taskList");
-    list.innerHTML = "";
-    tasks.forEach((task, index) => {
-      list.innerHTML += `<li>${task}
-      <button onclick="deleteTask(${index})">❌</button></li>`;
+function saveTasks() {
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+}
+
+function renderTasks() {
+  let list = document.getElementById("taskList");
+  list.innerHTML = "";
+
+  tasks
+    .filter(task => {
+      if (filter === "completed") return task.done;
+      if (filter === "pending") return !task.done;
+      return true;
+    })
+    .forEach((task, index) => {
+      list.innerHTML += `
+      <li class="${task.done ? 'completed' : ''}">
+        <span onclick="toggleTask(${index})">${task.text}</span>
+        <button onclick="deleteTask(${index})">❌</button>
+      </li>`;
     });
-  }
+}
 
-  function addTask() {
-    let input = document.getElementById("taskInput");
-    tasks.push(input.value);
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-    input.value = "";
-    renderTasks();
-  }
-
-  function deleteTask(index) {
-    tasks.splice(index, 1);
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-    renderTasks();
-  }
-
-  document.getElementById("time").innerText = new Date().toLocaleString();
+function addTask() {
+  let input = document.getElementById("taskInput");
+  if (input.value.trim() === "") return;
+  tasks.push({ text: input.value, done: false });
+  input.value = "";
+  saveTasks();
   renderTasks();
+}
+
+function deleteTask(index) {
+  tasks.splice(index, 1);
+  saveTasks();
+  renderTasks();
+}
+
+function toggleTask(index) {
+  tasks[index].done = !tasks[index].done;
+  saveTasks();
+  renderTasks();
+}
+
+function filterTasks(type) {
+  filter = type;
+  renderTasks();
+}
+
+// Deployment info
+document.getElementById("time").innerText = new Date().toLocaleString();
+
+// Live clock
+setInterval(() => {
+  document.getElementById("clock").innerText = new Date().toLocaleTimeString();
+}, 1000);
+
+renderTasks();
 </script>
 
 </body>
