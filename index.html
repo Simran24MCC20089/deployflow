@@ -2,40 +2,58 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DeployFlow Pro 🚀</title>
+<title>DeployFlow Pro Max 🚀</title>
 
 <style>
 body {
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+  margin: 0;
+  font-family: 'Segoe UI';
+  background: linear-gradient(-45deg, #1e3a8a, #0f172a, #2563eb);
+  background-size: 400% 400%;
+  animation: gradient 10s ease infinite;
   color: white;
-  text-align: center;
-  transition: 0.3s;
 }
 
-.light {
-  background: #f1f5f9;
-  color: black;
+@keyframes gradient {
+  0% {background-position: 0%;}
+  50% {background-position: 100%;}
+  100% {background-position: 0%;}
 }
 
-h1 {
+.sidebar {
+  width: 200px;
+  height: 100vh;
+  background: #020617;
+  position: fixed;
+  padding: 20px;
+}
+
+.sidebar h2 {
   color: #38bdf8;
+}
+
+.sidebar p {
+  cursor: pointer;
+  padding: 10px;
+}
+
+.main {
+  margin-left: 220px;
+  padding: 20px;
 }
 
 .container {
   display: flex;
-  justify-content: center;
   gap: 20px;
   flex-wrap: wrap;
 }
 
 .card {
-  backdrop-filter: blur(10px);
+  flex: 1;
+  min-width: 300px;
   background: rgba(30,41,59,0.8);
   padding: 20px;
   border-radius: 15px;
-  width: 320px;
-  box-shadow: 0 0 20px rgba(0,0,0,0.5);
   transition: 0.3s;
 }
 
@@ -43,182 +61,186 @@ h1 {
   transform: scale(1.03);
 }
 
-input {
+input, select {
   padding: 10px;
-  width: 65%;
-  border-radius: 5px;
+  margin: 5px;
 }
 
 button {
   padding: 10px;
-  border-radius: 5px;
-  cursor: pointer;
   background: #38bdf8;
   border: none;
-  transition: 0.2s;
-}
-
-button:hover {
-  transform: scale(1.1);
+  cursor: pointer;
 }
 
 li {
   list-style: none;
-  margin: 8px;
-  padding: 8px;
   background: #334155;
+  margin: 5px;
+  padding: 10px;
   border-radius: 5px;
   display: flex;
   justify-content: space-between;
 }
 
-.completed {
-  text-decoration: line-through;
-  color: gray;
+.high { border-left: 5px solid red; }
+.medium { border-left: 5px solid orange; }
+.low { border-left: 5px solid green; }
+
+.progress {
+  height: 10px;
+  background: gray;
+  border-radius: 5px;
+  overflow: hidden;
 }
 
-.stats {
-  margin-top: 10px;
-  font-size: 14px;
+.progress-bar {
+  height: 10px;
+  background: #38bdf8;
+  width: 0%;
 }
 
-.toggle {
-  position: absolute;
-  top: 20px;
+.toast {
+  position: fixed;
+  bottom: 20px;
   right: 20px;
+  background: black;
+  padding: 10px;
+  border-radius: 5px;
+  display: none;
 }
 </style>
 </head>
 
 <body>
 
-<button class="toggle" onclick="toggleTheme()">🌙</button>
+<div class="sidebar">
+<h2>DeployFlow 🚀</h2>
+<p>Dashboard</p>
+<p>Tasks</p>
+<p>Deployments</p>
+</div>
 
-<h1>DeployFlow Pro 🚀</h1>
+<div class="main">
+
+<h1>DeployFlow Pro Max 🚀</h1>
 
 <div class="container">
 
 <div class="card">
-<h3>📌 Task Manager</h3>
+<h3>Task Manager</h3>
 
-<input id="taskInput" placeholder="Enter task">
+<input id="taskInput" placeholder="Task">
+<select id="priority">
+<option value="low">Low</option>
+<option value="medium">Medium</option>
+<option value="high">High</option>
+</select>
+
 <button onclick="addTask()">Add</button>
-
-<br><br>
-<input id="search" placeholder="Search..." onkeyup="renderTasks()">
-
-<div>
-<button onclick="filterTasks('all')">All</button>
-<button onclick="filterTasks('completed')">Completed</button>
-<button onclick="filterTasks('pending')">Pending</button>
-</div>
 
 <ul id="taskList"></ul>
 
-<div class="stats">
-Total: <span id="total"></span> |
-Completed: <span id="completed"></span> |
-Pending: <span id="pending"></span>
+<h4>Progress</h4>
+<div class="progress">
+<div class="progress-bar" id="progressBar"></div>
 </div>
 
 </div>
 
 <div class="card">
-<h3>📊 Deployment Info</h3>
+<h3>Deployment Panel</h3>
 
-<p><b>Version:</b> <span id="version">v2.0</span></p>
-<p><b>Last Updated:</b> <span id="time"></span></p>
-<p><b>Status:</b> <span id="status">Deploying...</span></p>
-<p><b>Live Clock:</b> <span id="clock"></span></p>
+<p>Version: <span id="version">v3.0</span></p>
+<p>Build Time: <span id="time"></span></p>
+<p>Status: <span id="status">Deploying...</span></p>
+<p>Deploy Count: <span id="count">0</span></p>
+
+<button onclick="simulateDeploy()">Simulate Deploy</button>
 
 </div>
 
 </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-let filter = "all";
+let count = localStorage.getItem("count") || 0;
+
+function showToast(msg) {
+  let t = document.getElementById("toast");
+  t.innerText = msg;
+  t.style.display = "block";
+  setTimeout(()=> t.style.display="none", 2000);
+}
 
 function save() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
 }
 
 function addTask() {
-  let input = document.getElementById("taskInput");
-  if (!input.value) return alert("Enter task!");
+  let text = taskInput.value;
+  let priority = document.getElementById("priority").value;
 
-  tasks.push({ text: input.value, done: false });
-  input.value = "";
+  if (!text) return;
+
+  tasks.push({text, done:false, priority});
+  taskInput.value="";
   save();
-  renderTasks();
-
-  alert("Task Added ✅");
-}
-
-function deleteTask(i) {
-  tasks.splice(i, 1);
-  save();
-  renderTasks();
+  render();
+  showToast("Task Added 🚀");
 }
 
 function toggleTask(i) {
   tasks[i].done = !tasks[i].done;
   save();
-  renderTasks();
+  render();
 }
 
-function filterTasks(f) {
-  filter = f;
-  renderTasks();
+function deleteTask(i) {
+  tasks.splice(i,1);
+  save();
+  render();
 }
 
-function renderTasks() {
+function render() {
   let list = document.getElementById("taskList");
-  let search = document.getElementById("search").value.toLowerCase();
   list.innerHTML = "";
 
-  let filtered = tasks.filter(t => {
-    if (filter === "completed") return t.done;
-    if (filter === "pending") return !t.done;
-    return true;
-  }).filter(t => t.text.toLowerCase().includes(search));
+  let done = 0;
 
-  filtered.forEach((t, i) => {
+  tasks.forEach((t,i)=>{
+    if(t.done) done++;
+
     list.innerHTML += `
-    <li class="${t.done ? 'completed' : ''}">
+    <li class="${t.priority}">
       <span onclick="toggleTask(${i})">${t.text}</span>
       <button onclick="deleteTask(${i})">❌</button>
     </li>`;
   });
 
-  document.getElementById("total").innerText = tasks.length;
-  document.getElementById("completed").innerText = tasks.filter(t=>t.done).length;
-  document.getElementById("pending").innerText = tasks.filter(t=>!t.done).length;
+  let percent = tasks.length ? (done/tasks.length)*100 : 0;
+  document.getElementById("progressBar").style.width = percent+"%";
 }
 
-// Theme toggle
-function toggleTheme() {
-  document.body.classList.toggle("light");
+function simulateDeploy() {
+  count++;
+  localStorage.setItem("count", count);
+  document.getElementById("count").innerText = count;
+
+  document.getElementById("status").innerText = "Deploying...";
+  setTimeout(()=>{
+    document.getElementById("status").innerText = "Live ✅";
+    showToast("Deployment Successful 🎉");
+  },2000);
 }
 
-// Deployment simulation
-setTimeout(()=>{
-  document.getElementById("status").innerText = "Live ✅";
-}, 2000);
-
-// Time
 document.getElementById("time").innerText = new Date().toLocaleString();
 
-setInterval(()=>{
-  document.getElementById("clock").innerText = new Date().toLocaleTimeString();
-},1000);
-
-// Auto refresh (simulate CI/CD)
-setTimeout(()=>{
-  location.reload();
-}, 20000);
-
-renderTasks();
+render();
 </script>
 
 </body>
