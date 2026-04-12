@@ -1,8 +1,9 @@
+<meta charset="UTF-8">
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DeployFlow Dashboard</title>
+<title>DeployFlow DevOps Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -10,101 +11,155 @@
 body {
   margin: 0;
   font-family: 'Segoe UI';
-  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+  background: #0b1e2d;
   color: white;
 }
 
-/* HEADER */
-.header {
-  text-align: center;
+/* SIDEBAR */
+.sidebar {
+  width: 220px;
+  height: 100vh;
+  background: #06141f;
+  position: fixed;
   padding: 20px;
-  font-size: 28px;
-  font-weight: bold;
 }
 
-/* LAYOUT */
-.container {
-  display: flex;
-  gap: 20px;
+.sidebar h2 {
+  color: #38bdf8;
+}
+
+.sidebar p {
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.sidebar p:hover {
+  background: #1e293b;
+}
+
+/* MAIN */
+.main {
+  margin-left: 240px;
   padding: 20px;
+}
+
+/* TOP CARDS */
+.cards {
+  display: flex;
+  gap: 15px;
   flex-wrap: wrap;
 }
 
-/* CARD */
 .card {
   flex: 1;
-  min-width: 300px;
-  background: #1e293b;
+  min-width: 180px;
+  background: #122b3c;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
 
-/* BUTTON */
-button {
+.card h3 {
+  margin: 0;
+}
+
+/* CHART */
+.chart {
+  margin-top: 20px;
+  background: #122b3c;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+/* TABLE */
+table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+}
+
+td, th {
   padding: 10px;
-  background: #38bdf8;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #0ea5e9;
+  border-bottom: 1px solid #333;
 }
 
 .green { color: lightgreen; }
 .red { color: red; }
 
-canvas {
-  margin-top: 10px;
+button {
+  padding: 8px;
+  background: #38bdf8;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">
-DeployFlow Dashboard
+<div class="sidebar">
+<h2>DeployFlow</h2>
+<p>Dashboard</p>
+<p>Deployments</p>
+<p>Kubernetes</p>
+<p>Logs</p>
+<p>Settings</p>
 </div>
 
-<div class="container">
+<div class="main">
 
-<!-- DEPLOYMENTS -->
+<h1>DevOps Monitoring Dashboard</h1>
+
+<!-- KPI CARDS -->
+<div class="cards">
 <div class="card">
-<h2>Deployments</h2>
+<h3 id="builds">0</h3>
+<p>Total Deployments</p>
+</div>
 
+<div class="card">
+<h3 id="success">100%</h3>
+<p>Success Rate</p>
+</div>
+
+<div class="card">
+<h3>Running</h3>
+<p>Kubernetes Pods</p>
+</div>
+
+<div class="card">
+<h3 id="jenkinsStatus">--</h3>
+<p>Jenkins Status</p>
+</div>
+</div>
+
+<!-- CHART -->
+<div class="chart">
+<h3>Deployment Trends</h3>
+<canvas id="chart"></canvas>
+</div>
+
+<!-- TABLE -->
+<h3>Deployment History</h3>
+<table>
+<tr>
+<th>Version</th>
+<th>Status</th>
+<th>Time</th>
+</tr>
+<tbody id="deployList"></tbody>
+</table>
+
+<br>
 <button onclick="deploy()">Trigger Deployment</button>
-
-<ul id="deployList"></ul>
-</div>
-
-<!-- JENKINS -->
-<div class="card">
-<h2>Jenkins Status</h2>
-
-<p>Status: <span id="status"></span></p>
-<p>Jobs: <span id="jobs"></span></p>
-</div>
-
-<!-- LINE CHART -->
-<div class="card">
-<h2>Deployment Trend</h2>
-<canvas id="lineChart"></canvas>
-</div>
-
-<!-- PIE CHART -->
-<div class="card">
-<h2>Success Ratio</h2>
-<canvas id="pieChart"></canvas>
-</div>
 
 </div>
 
 <script>
 const API = "http://localhost:5000/api";
 
-let lineChart = new Chart(document.getElementById("lineChart"), {
+let chart = new Chart(document.getElementById("chart"), {
   type: 'line',
   data: {
     labels: [],
@@ -116,38 +171,31 @@ let lineChart = new Chart(document.getElementById("lineChart"), {
   }
 });
 
-let pieChart = new Chart(document.getElementById("pieChart"), {
-  type: 'doughnut',
-  data: {
-    labels: ["Success", "Failed"],
-    datasets: [{
-      data: [1,0],
-      backgroundColor: ["lime","red"]
-    }]
-  }
-});
-
 async function loadDeployments() {
   const res = await fetch(API + "/deployments");
   const data = await res.json();
 
-  let list = document.getElementById("deployList");
-  list.innerHTML = "";
+  document.getElementById("builds").innerText = data.length;
 
-  let success = 0;
+  let success = data.filter(d => d.status==="Success").length;
+  let rate = data.length ? Math.round((success/data.length)*100) : 100;
+  document.getElementById("success").innerText = rate + "%";
 
-  data.forEach((d,i) => {
-    list.innerHTML += `<li>${d.version} - ${d.status} - ${d.time}</li>`;
-    if(d.status==="Success") success++;
+  let table = document.getElementById("deployList");
+  table.innerHTML = "";
+
+  data.forEach(d => {
+    table.innerHTML += `
+    <tr>
+      <td>${d.version}</td>
+      <td class="${d.status==='Success'?'green':'red'}">${d.status}</td>
+      <td>${d.time}</td>
+    </tr>`;
   });
 
-  // update charts
-  lineChart.data.labels = data.map((_,i)=>i+1);
-  lineChart.data.datasets[0].data = data.map((_,i)=>i+1);
-  lineChart.update();
-
-  pieChart.data.datasets[0].data = [success, data.length-success];
-  pieChart.update();
+  chart.data.labels = data.map((_,i)=>i+1);
+  chart.data.datasets[0].data = data.map((_,i)=>i+1);
+  chart.update();
 }
 
 async function deploy() {
@@ -159,11 +207,7 @@ async function loadJenkins() {
   const res = await fetch(API + "/jenkins");
   const data = await res.json();
 
-  document.getElementById("status").innerText = data.status;
-  document.getElementById("jobs").innerText = data.jobs;
-
-  document.getElementById("status").className =
-    data.status==="Connected" ? "green" : "red";
+  document.getElementById("jenkinsStatus").innerText = data.status;
 }
 
 setInterval(()=>{
