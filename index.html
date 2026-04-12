@@ -1,9 +1,8 @@
-<meta charset="UTF-8">
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DeployFlow DevOps Dashboard</title>
+<title>DeployFlow DevOps System</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -13,25 +12,38 @@ body {
   font-family: 'Segoe UI';
   background: #0b1e2d;
   color: white;
+  transition: 0.3s;
+}
+
+.light {
+  background: #f1f5f9;
+  color: black;
+}
+
+/* NAVBAR */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 20px;
+  background: #06141f;
+}
+
+.navbar button {
+  padding: 5px 10px;
 }
 
 /* SIDEBAR */
 .sidebar {
-  width: 220px;
+  width: 200px;
   height: 100vh;
-  background: #06141f;
+  background: #020617;
   position: fixed;
   padding: 20px;
 }
 
-.sidebar h2 {
-  color: #38bdf8;
-}
-
 .sidebar p {
-  padding: 10px;
   cursor: pointer;
-  border-radius: 6px;
+  padding: 10px;
 }
 
 .sidebar p:hover {
@@ -40,125 +52,95 @@ body {
 
 /* MAIN */
 .main {
-  margin-left: 240px;
+  margin-left: 220px;
   padding: 20px;
-}
-
-/* TOP CARDS */
-.cards {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
 }
 
 .card {
-  flex: 1;
-  min-width: 180px;
-  background: #122b3c;
+  background: #1e293b;
   padding: 20px;
   border-radius: 12px;
+  margin-bottom: 20px;
 }
 
-.card h3 {
-  margin: 0;
-}
-
-/* CHART */
-.chart {
-  margin-top: 20px;
-  background: #122b3c;
-  padding: 20px;
-  border-radius: 12px;
-}
-
-/* TABLE */
-table {
-  width: 100%;
-  margin-top: 20px;
-  border-collapse: collapse;
-}
-
-td, th {
-  padding: 10px;
-  border-bottom: 1px solid #333;
-}
+.hidden { display:none; }
 
 .green { color: lightgreen; }
 .red { color: red; }
 
-button {
+table {
+  width: 100%;
+}
+
+td, th {
   padding: 8px;
-  background: #38bdf8;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="sidebar">
+<div class="navbar">
 <h2>DeployFlow</h2>
-<p>Dashboard</p>
-<p>Deployments</p>
-<p>Kubernetes</p>
-<p>Logs</p>
-<p>Settings</p>
+<button onclick="toggleTheme()">Toggle Theme</button>
+</div>
+
+<div class="sidebar">
+<p onclick="show('dashboard')">Dashboard</p>
+<p onclick="show('jenkins')">Jenkins Jobs</p>
+<p onclick="show('logs')">Logs</p>
 </div>
 
 <div class="main">
 
-<h1>DevOps Monitoring Dashboard</h1>
-
-<!-- KPI CARDS -->
-<div class="cards">
+<!-- DASHBOARD -->
+<div id="dashboard">
 <div class="card">
-<h3 id="builds">0</h3>
-<p>Total Deployments</p>
+<h3>Total Deployments: <span id="count"></span></h3>
+<h3>Jenkins: <span id="jenkinsStatus"></span></h3>
 </div>
 
 <div class="card">
-<h3 id="success">100%</h3>
-<p>Success Rate</p>
-</div>
-
-<div class="card">
-<h3>Running</h3>
-<p>Kubernetes Pods</p>
-</div>
-
-<div class="card">
-<h3 id="jenkinsStatus">--</h3>
-<p>Jenkins Status</p>
-</div>
-</div>
-
-<!-- CHART -->
-<div class="chart">
-<h3>Deployment Trends</h3>
 <canvas id="chart"></canvas>
 </div>
+</div>
 
-<!-- TABLE -->
-<h3>Deployment History</h3>
+<!-- JENKINS JOBS -->
+<div id="jenkins" class="hidden">
+<div class="card">
+<h2>Jenkins Job List</h2>
 <table>
-<tr>
-<th>Version</th>
-<th>Status</th>
-<th>Time</th>
-</tr>
-<tbody id="deployList"></tbody>
+<tr><th>Name</th><th>Status</th></tr>
+<tbody id="jobs"></tbody>
 </table>
+</div>
+</div>
 
-<br>
-<button onclick="deploy()">Trigger Deployment</button>
+<!-- LOGS -->
+<div id="logs" class="hidden">
+<div class="card">
+<h2>Activity Logs</h2>
+<ul id="logList"></ul>
+</div>
+</div>
 
 </div>
 
 <script>
 const API = "http://localhost:5000/api";
 
+/* NAVIGATION */
+function show(page) {
+  document.querySelectorAll(".main > div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById(page).classList.remove("hidden");
+}
+
+/* THEME */
+function toggleTheme() {
+  document.body.classList.toggle("light");
+}
+
+/* CHART */
 let chart = new Chart(document.getElementById("chart"), {
   type: 'line',
   data: {
@@ -171,38 +153,19 @@ let chart = new Chart(document.getElementById("chart"), {
   }
 });
 
+/* LOAD DEPLOYMENTS */
 async function loadDeployments() {
   const res = await fetch(API + "/deployments");
   const data = await res.json();
 
-  document.getElementById("builds").innerText = data.length;
-
-  let success = data.filter(d => d.status==="Success").length;
-  let rate = data.length ? Math.round((success/data.length)*100) : 100;
-  document.getElementById("success").innerText = rate + "%";
-
-  let table = document.getElementById("deployList");
-  table.innerHTML = "";
-
-  data.forEach(d => {
-    table.innerHTML += `
-    <tr>
-      <td>${d.version}</td>
-      <td class="${d.status==='Success'?'green':'red'}">${d.status}</td>
-      <td>${d.time}</td>
-    </tr>`;
-  });
+  document.getElementById("count").innerText = data.length;
 
   chart.data.labels = data.map((_,i)=>i+1);
   chart.data.datasets[0].data = data.map((_,i)=>i+1);
   chart.update();
 }
 
-async function deploy() {
-  await fetch(API + "/deploy", { method: "POST" });
-  loadDeployments();
-}
-
+/* JENKINS STATUS */
 async function loadJenkins() {
   const res = await fetch(API + "/jenkins");
   const data = await res.json();
@@ -210,13 +173,50 @@ async function loadJenkins() {
   document.getElementById("jenkinsStatus").innerText = data.status;
 }
 
+/* JENKINS JOBS */
+async function loadJobs() {
+  const res = await fetch(API + "/jenkins/jobs");
+  const data = await res.json();
+
+  let table = document.getElementById("jobs");
+  table.innerHTML = "";
+
+  data.forEach(job=>{
+    table.innerHTML += `
+    <tr>
+      <td>${job.name}</td>
+      <td class="${job.color.includes('blue')?'green':'red'}">
+        ${job.color}
+      </td>
+    </tr>`;
+  });
+}
+
+/* LOGS */
+async function loadLogs() {
+  const res = await fetch(API + "/logs");
+  const data = await res.json();
+
+  let list = document.getElementById("logList");
+  list.innerHTML = "";
+
+  data.forEach(l=>{
+    list.innerHTML += `<li>${l.message}</li>`;
+  });
+}
+
+/* AUTO REFRESH */
 setInterval(()=>{
   loadDeployments();
   loadJenkins();
+  loadJobs();
+  loadLogs();
 },3000);
 
 loadDeployments();
 loadJenkins();
+loadJobs();
+loadLogs();
 </script>
 
 </body>
