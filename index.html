@@ -1,100 +1,124 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>DeployFlow Dashboard 🚀</title>
+<title>DeployFlow Live Dashboard 🚀</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
   margin: 0;
   font-family: 'Segoe UI';
-  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+  background: linear-gradient(-45deg, #1e3a8a, #0f172a, #2563eb, #020617);
+  background-size: 400% 400%;
+  animation: gradient 10s ease infinite;
   color: white;
+}
+
+@keyframes gradient {
+  0% {background-position: 0%;}
+  50% {background-position: 100%;}
+  100% {background-position: 0%;}
 }
 
 /* HEADER */
 .header {
+  display: flex;
+  justify-content: space-between;
   padding: 20px;
-  text-align: center;
-  font-size: 28px;
-  font-weight: bold;
+}
+
+.toggle {
+  cursor: pointer;
 }
 
 /* LAYOUT */
 .container {
   display: flex;
-  justify-content: center;
-  gap: 30px;
+  gap: 20px;
   padding: 20px;
   flex-wrap: wrap;
 }
 
 /* CARDS */
 .card {
-  width: 400px;
-  background: #1e293b;
+  flex: 1;
+  min-width: 280px;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
   padding: 20px;
   border-radius: 15px;
-  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
   transition: 0.3s;
 }
 
 .card:hover {
-  transform: translateY(-5px);
+  transform: scale(1.03);
 }
 
 /* BUTTON */
 button {
-  padding: 10px 15px;
+  padding: 10px;
   background: #38bdf8;
   border: none;
-  border-radius: 6px;
+  border-radius: 5px;
   cursor: pointer;
-  margin-bottom: 10px;
 }
 
 button:hover {
   background: #0ea5e9;
 }
 
-/* LIST */
-ul {
-  padding-left: 20px;
-}
-
-li {
-  margin: 8px 0;
-}
-
-/* STATUS */
+/* STATUS COLORS */
 .green { color: lightgreen; }
 .red { color: red; }
+
+/* LIGHT MODE */
+.light {
+  background: #f1f5f9;
+  color: black;
+}
+
+canvas {
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  padding: 10px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-DeployFlow Dashboard 🚀
+<h2>DeployFlow Live 🚀</h2>
+<div>
+<span id="clock"></span> |
+<button onclick="toggleTheme()">🌙</button>
+</div>
 </div>
 
 <div class="container">
 
-<!-- DEPLOYMENTS -->
 <div class="card">
-<h2>🚀 Deployments</h2>
-
-<button onclick="deploy()">Trigger Deployment</button>
-
+<h3>🚀 Deployments</h3>
+<button onclick="deploy()">Trigger Deploy</button>
+<p>Total: <span id="count"></span></p>
 <ul id="deployList"></ul>
 </div>
 
-<!-- JENKINS -->
 <div class="card">
-<h2>⚙️ Jenkins Status</h2>
-
+<h3>⚙️ Jenkins Status</h3>
 <p>Status: <span id="status"></span></p>
 <p>Jobs: <span id="jobs"></span></p>
+</div>
 
+<div class="card">
+<h3>📊 Deployment Trends</h3>
+<canvas id="lineChart"></canvas>
+</div>
+
+<div class="card">
+<h3>📈 Success Ratio</h3>
+<canvas id="pieChart"></canvas>
 </div>
 
 </div>
@@ -102,21 +126,53 @@ DeployFlow Dashboard 🚀
 <script>
 const API = "http://localhost:5000/api";
 
+let lineChart = new Chart(document.getElementById("lineChart"), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: "Deployments",
+      data: [],
+      borderColor: "cyan",
+      fill: false
+    }]
+  }
+});
+
+let pieChart = new Chart(document.getElementById("pieChart"), {
+  type: 'doughnut',
+  data: {
+    labels: ["Success", "Failed"],
+    datasets: [{
+      data: [1,0],
+      backgroundColor: ["lime", "red"]
+    }]
+  }
+});
+
 async function loadDeployments() {
   const res = await fetch(API + "/deployments");
   const data = await res.json();
 
+  document.getElementById("count").innerText = data.length;
+
   let list = document.getElementById("deployList");
   list.innerHTML = "";
 
-  data.forEach(d => {
-    list.innerHTML += `
-      <li>
-        <b>${d.version}</b> - 
-        <span class="green">${d.status}</span> - 
-        ${d.time}
-      </li>`;
+  let success = 0;
+
+  data.slice(0,5).forEach(d => {
+    list.innerHTML += `<li>${d.version} - ${d.status}</li>`;
+    if(d.status==="Success") success++;
   });
+
+  // Update charts
+  lineChart.data.labels = data.map((_,i)=>i+1);
+  lineChart.data.datasets[0].data = data.map((_,i)=>i+1);
+  lineChart.update();
+
+  pieChart.data.datasets[0].data = [success, data.length-success];
+  pieChart.update();
 }
 
 async function deploy() {
@@ -131,17 +187,25 @@ async function loadJenkins() {
   document.getElementById("status").innerText = data.status;
   document.getElementById("jobs").innerText = data.jobs;
 
-  if (data.status === "Connected") {
-    document.getElementById("status").className = "green";
-  } else {
-    document.getElementById("status").className = "red";
-  }
+  document.getElementById("status").className =
+    data.status==="Connected" ? "green" : "red";
 }
 
-setInterval(() => {
+function toggleTheme() {
+  document.body.classList.toggle("light");
+}
+
+// Clock
+setInterval(()=>{
+  document.getElementById("clock").innerText =
+    new Date().toLocaleTimeString();
+},1000);
+
+// Auto refresh
+setInterval(()=>{
   loadDeployments();
   loadJenkins();
-}, 3000);
+},3000);
 
 loadDeployments();
 loadJenkins();
