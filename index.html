@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DeployFlow DevOps</title>
+<title>DeployFlow Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -10,43 +10,25 @@
 body {
   margin: 0;
   font-family: 'Segoe UI';
-  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+  background: #0b1e2d;
   color: white;
-  transition: 0.3s;
-}
-
-/* LIGHT MODE */
-.light {
-  background: #f1f5f9;
-  color: black;
-}
-
-/* NAVBAR */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  padding: 15px 20px;
-  background: rgba(0,0,0,0.3);
-  backdrop-filter: blur(10px);
-}
-
-/* MOON BUTTON */
-.theme-btn {
-  font-size: 20px;
-  cursor: pointer;
 }
 
 /* SIDEBAR */
 .sidebar {
-  width: 200px;
+  width: 220px;
   height: 100vh;
   background: #020617;
   position: fixed;
   padding: 20px;
 }
 
+.sidebar h2 {
+  color: #38bdf8;
+}
+
 .sidebar p {
-  padding: 10px;
+  padding: 12px;
   cursor: pointer;
   border-radius: 6px;
 }
@@ -57,146 +39,89 @@ body {
 
 /* MAIN */
 .main {
-  margin-left: 220px;
+  margin-left: 240px;
   padding: 20px;
 }
 
-/* CARDS */
+/* CARD */
 .card {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(10px);
+  background: #1e293b;
   padding: 20px;
-  border-radius: 15px;
+  border-radius: 12px;
   margin-bottom: 20px;
-  transition: 0.3s;
-}
-
-.card:hover {
-  transform: translateY(-5px);
 }
 
 /* BUTTON */
-.deploy-btn {
-  padding: 10px 15px;
+button {
+  padding: 10px;
   background: #38bdf8;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  margin-top: 10px;
 }
 
-.deploy-btn:hover {
-  background: #0ea5e9;
-}
-
-/* STATUS */
 .green { color: lightgreen; }
 .red { color: red; }
 
 /* TABLE */
 table {
   width: 100%;
+  border-collapse: collapse;
 }
 
 td, th {
-  padding: 8px;
-}
-
-/* NOTIFICATION */
-.toast {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: #22c55e;
-  padding: 10px 20px;
-  border-radius: 5px;
-  display: none;
+  padding: 10px;
+  border-bottom: 1px solid #333;
 }
 </style>
 </head>
 
 <body>
 
-<!-- NAVBAR -->
-<div class="navbar">
-<h2>DeployFlow 🚀</h2>
-<div>
-<span id="clock"></span>
-<span class="theme-btn" onclick="toggleTheme()">🌙</span>
-</div>
-</div>
-
-<!-- SIDEBAR -->
 <div class="sidebar">
-<p onclick="show('dashboard')">Dashboard</p>
-<p onclick="show('jenkins')">Jenkins</p>
-<p onclick="show('logs')">Logs</p>
+<h2>DeployFlow</h2>
+<p>Dashboard</p>
+<p>Deployments</p>
+<p>System</p>
+<p>Logs</p>
 </div>
 
-<!-- MAIN -->
 <div class="main">
 
-<!-- DASHBOARD -->
-<div id="dashboard">
-
-<div class="card">
-<h3>Total Deployments: <span id="count"></span></h3>
-<h3>Jenkins: <span id="jenkinsStatus"></span></h3>
-
-<button class="deploy-btn" onclick="deploy()">🚀 Trigger Deployment</button>
-</div>
+<h2>Deployment Trends</h2>
 
 <div class="card">
 <canvas id="chart"></canvas>
 </div>
 
-</div>
+<h2>Deployment History</h2>
 
-<!-- JENKINS -->
-<div id="jenkins" class="hidden">
 <div class="card">
-<h3>Jenkins Jobs</h3>
 <table>
-<tr><th>Name</th><th>Status</th></tr>
-<tbody id="jobs"></tbody>
+<tr>
+<th>Version</th>
+<th>Status</th>
+<th>Time</th>
+</tr>
+<tbody id="deployList"></tbody>
 </table>
 </div>
-</div>
 
-<!-- LOGS -->
-<div id="logs" class="hidden">
+<h2>System Status</h2>
+
 <div class="card">
-<h3>Logs</h3>
-<ul id="logList"></ul>
-</div>
+<p>Server: <span class="green">Running</span></p>
+<p>Docker: <span class="green">Active</span></p>
+<p>Jenkins: <span id="jenkinsStatus"></span></p>
+
+<button onclick="deploy()">Trigger Deployment</button>
 </div>
 
 </div>
-
-<!-- NOTIFICATION -->
-<div class="toast" id="toast">Deployment Successful 🚀</div>
 
 <script>
 const API = "http://localhost:5000/api";
 
-/* NAVIGATION */
-function show(page) {
-  document.querySelectorAll(".main > div").forEach(d=>d.style.display="none");
-  document.getElementById(page).style.display="block";
-}
-
-/* THEME */
-function toggleTheme() {
-  document.body.classList.toggle("light");
-}
-
-/* CLOCK */
-setInterval(()=>{
-  document.getElementById("clock").innerText =
-    new Date().toLocaleTimeString();
-},1000);
-
-/* CHART */
 let chart = new Chart(document.getElementById("chart"), {
   type: 'line',
   data: {
@@ -209,64 +134,35 @@ let chart = new Chart(document.getElementById("chart"), {
   }
 });
 
-/* DEPLOYMENTS */
+/* LOAD DEPLOYMENTS */
 async function loadDeployments() {
   const res = await fetch(API + "/deployments");
   const data = await res.json();
 
-  document.getElementById("count").innerText = data.length;
+  let table = document.getElementById("deployList");
+  table.innerHTML = "";
+
+  data.forEach((d,i) => {
+    table.innerHTML += `
+      <tr>
+        <td>${d.version}</td>
+        <td class="green">${d.status}</td>
+        <td>${d.time}</td>
+      </tr>`;
+  });
 
   chart.data.labels = data.map((_,i)=>i+1);
   chart.data.datasets[0].data = data.map((_,i)=>i+1);
   chart.update();
 }
 
-/* DEPLOY BUTTON */
+/* DEPLOY */
 async function deploy() {
   await fetch(API + "/deploy", { method: "POST" });
-  showToast();
   loadDeployments();
-  loadLogs();
-}
-
-/* TOAST */
-function showToast() {
-  let t = document.getElementById("toast");
-  t.style.display = "block";
-  setTimeout(()=>t.style.display="none",2000);
 }
 
 /* JENKINS */
-async function loadJobs() {
-  const res = await fetch(API + "/jenkins/jobs");
-  const data = await res.json();
-
-  let table = document.getElementById("jobs");
-  table.innerHTML = "";
-
-  data.forEach(j=>{
-    table.innerHTML += `
-    <tr>
-      <td>${j.name}</td>
-      <td class="${j.status==='Success'?'green':'red'}">${j.status}</td>
-    </tr>`;
-  });
-}
-
-/* LOGS */
-async function loadLogs() {
-  const res = await fetch(API + "/logs");
-  const data = await res.json();
-
-  let list = document.getElementById("logList");
-  list.innerHTML = "";
-
-  data.forEach(l=>{
-    list.innerHTML += `<li>${l.message}</li>`;
-  });
-}
-
-/* JENKINS STATUS */
 async function loadJenkins() {
   const res = await fetch(API + "/jenkins");
   const data = await res.json();
@@ -277,14 +173,10 @@ async function loadJenkins() {
 /* AUTO REFRESH */
 setInterval(()=>{
   loadDeployments();
-  loadJobs();
-  loadLogs();
   loadJenkins();
 },3000);
 
 loadDeployments();
-loadJobs();
-loadLogs();
 loadJenkins();
 </script>
 
