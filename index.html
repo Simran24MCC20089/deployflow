@@ -1,204 +1,75 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>DeployFlow Enterprise 🚀</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>DeployFlow Ultimate 🚀</title>
 
 <style>
-body {
-  margin: 0;
-  font-family: 'Segoe UI';
-  background: #0f172a;
-  color: white;
-}
-
-.light { background: #f1f5f9; color: black; }
-
-.sidebar {
-  width: 220px;
-  height: 100vh;
-  background: #020617;
-  position: fixed;
-  padding: 20px;
-}
-
-.sidebar h2 { color: #38bdf8; }
-
-.sidebar p {
-  padding: 10px;
-  cursor: pointer;
-}
-
-.main {
-  margin-left: 240px;
-  padding: 20px;
-}
-
-.cards {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.card {
-  flex: 1;
-  min-width: 200px;
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 12px;
-  transition: 0.3s;
-}
-
-.card:hover { transform: translateY(-5px); }
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-td, th {
-  padding: 10px;
-  border-bottom: 1px solid gray;
-}
-
-button {
-  padding: 10px;
-  margin: 5px;
-  background: #38bdf8;
-  border: none;
-  cursor: pointer;
-}
-
-canvas {
-  background: #1e293b;
-  padding: 10px;
-  border-radius: 10px;
-}
-
-.status-green { color: lightgreen; }
-.status-red { color: red; }
-
-.toggle {
-  position: absolute;
-  right: 20px;
-  top: 20px;
-}
+body { font-family: Arial; background: #0f172a; color: white; }
+.container { display: flex; gap: 20px; flex-wrap: wrap; }
+.card { background: #1e293b; padding: 20px; border-radius: 10px; }
+button { padding: 10px; margin: 5px; }
 </style>
 </head>
 
 <body>
 
-<button class="toggle" onclick="toggleTheme()">🌙</button>
+<h1>DeployFlow Ultimate Dashboard 🚀</h1>
 
-<div class="sidebar">
-<h2>DeployFlow 🚀</h2>
-<p>Dashboard</p>
-<p>Deployments</p>
-<p>System</p>
-<p>Logs</p>
+<div class="container">
+
+<div class="card">
+<h3>Deployments</h3>
+<button onclick="deploy()">Trigger Deploy</button>
+<ul id="deployList"></ul>
 </div>
 
-<div class="main">
-
-<h1>DevOps Monitoring Dashboard</h1>
-
-<!-- Stats -->
-<div class="cards">
-<div class="card">Builds<br><h2 id="builds">0</h2></div>
-<div class="card">Success Rate<br><h2 id="success">100%</h2></div>
-<div class="card">Containers<br><h2>1</h2></div>
-<div class="card">Version<br><h2 id="version">v1.0</h2></div>
+<div class="card">
+<h3>Jenkins Status</h3>
+<p>Status: <span id="jenkinsStatus"></span></p>
+<p>Jobs: <span id="jobs"></span></p>
 </div>
-
-<!-- Chart -->
-<h3>Deployment Trends</h3>
-<canvas id="chart"></canvas>
-
-<!-- Table -->
-<h3>Deployment History</h3>
-<table>
-<tr><th>Version</th><th>Status</th><th>Time</th></tr>
-<tbody id="history"></tbody>
-</table>
-
-<!-- System Status -->
-<h3>System Status</h3>
-<p>Server: <span class="status-green">Running</span></p>
-<p>Docker: <span class="status-green">Active</span></p>
-<p>Jenkins: <span class="status-green">Connected</span></p>
-
-<!-- Actions -->
-<button onclick="deploy()">Trigger Deployment</button>
-<button onclick="failDeploy()">Simulate Failure</button>
 
 </div>
 
 <script>
-let history = JSON.parse(localStorage.getItem("history")) || [];
+const API = "http://localhost:5000/api";
 
-function deploy() {
-  let version = "v" + (history.length + 1);
-  let time = new Date().toLocaleTimeString();
+// Load deployments
+async function loadDeployments() {
+    const res = await fetch(API + "/deployments");
+    const data = await res.json();
 
-  history.unshift({version, status:"Success", time});
-  localStorage.setItem("history", JSON.stringify(history));
+    let list = document.getElementById("deployList");
+    list.innerHTML = "";
 
-  update(version);
+    data.forEach(d => {
+        list.innerHTML += `<li>${d.version} - ${d.status} - ${d.time}</li>`;
+    });
 }
 
-function failDeploy() {
-  let version = "v" + (history.length + 1);
-  let time = new Date().toLocaleTimeString();
-
-  history.unshift({version, status:"Failed", time});
-  localStorage.setItem("history", JSON.stringify(history));
-
-  update(version);
+// Trigger deploy
+async function deploy() {
+    await fetch(API + "/deploy", { method: "POST" });
+    loadDeployments();
 }
 
-function update(version) {
-  document.getElementById("version").innerText = version;
-  document.getElementById("builds").innerText = history.length;
+// Jenkins status
+async function loadJenkins() {
+    const res = await fetch(API + "/jenkins");
+    const data = await res.json();
 
-  let success = history.filter(h=>h.status==="Success").length;
-  let rate = Math.round((success/history.length)*100);
-  document.getElementById("success").innerText = rate+"%";
-
-  renderHistory();
+    document.getElementById("jenkinsStatus").innerText = data.status;
+    document.getElementById("jobs").innerText = data.jobs;
 }
 
-function renderHistory() {
-  let table = document.getElementById("history");
-  table.innerHTML = "";
+// Auto refresh
+setInterval(() => {
+    loadDeployments();
+    loadJenkins();
+}, 3000);
 
-  history.forEach(h=>{
-    table.innerHTML += `
-    <tr>
-      <td>${h.version}</td>
-      <td class="${h.status==='Success'?'status-green':'status-red'}">${h.status}</td>
-      <td>${h.time}</td>
-    </tr>`;
-  });
-}
-
-function toggleTheme() {
-  document.body.classList.toggle("light");
-}
-
-renderHistory();
-
-/* Chart */
-new Chart(document.getElementById("chart"), {
-  type: 'line',
-  data: {
-    labels: ["Mon","Tue","Wed","Thu","Fri","Sat"],
-    datasets: [{
-      label: "Deployments",
-      data: [1,2,3,4,2,5]
-    }]
-  }
-});
+loadDeployments();
+loadJenkins();
 </script>
 
 </body>
