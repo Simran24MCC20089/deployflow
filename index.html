@@ -2,47 +2,40 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DeployFlow Pro Max 🚀</title>
+<title>DeployFlow Enterprise 🚀</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
   margin: 0;
   font-family: 'Segoe UI';
-  background: linear-gradient(-45deg, #1e3a8a, #0f172a, #2563eb);
-  background-size: 400% 400%;
-  animation: gradient 10s ease infinite;
+  background: #0f172a;
   color: white;
 }
 
-@keyframes gradient {
-  0% {background-position: 0%;}
-  50% {background-position: 100%;}
-  100% {background-position: 0%;}
-}
+.light { background: #f1f5f9; color: black; }
 
 .sidebar {
-  width: 200px;
+  width: 220px;
   height: 100vh;
   background: #020617;
   position: fixed;
   padding: 20px;
 }
 
-.sidebar h2 {
-  color: #38bdf8;
-}
+.sidebar h2 { color: #38bdf8; }
 
 .sidebar p {
-  cursor: pointer;
   padding: 10px;
+  cursor: pointer;
 }
 
 .main {
-  margin-left: 220px;
+  margin-left: 240px;
   padding: 20px;
 }
 
-.container {
+.cards {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
@@ -50,197 +43,162 @@ body {
 
 .card {
   flex: 1;
-  min-width: 300px;
-  background: rgba(30,41,59,0.8);
+  min-width: 200px;
+  background: #1e293b;
   padding: 20px;
-  border-radius: 15px;
+  border-radius: 12px;
   transition: 0.3s;
 }
 
-.card:hover {
-  transform: scale(1.03);
+.card:hover { transform: translateY(-5px); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-input, select {
+td, th {
   padding: 10px;
-  margin: 5px;
+  border-bottom: 1px solid gray;
 }
 
 button {
   padding: 10px;
+  margin: 5px;
   background: #38bdf8;
   border: none;
   cursor: pointer;
 }
 
-li {
-  list-style: none;
-  background: #334155;
-  margin: 5px;
+canvas {
+  background: #1e293b;
   padding: 10px;
-  border-radius: 5px;
-  display: flex;
-  justify-content: space-between;
+  border-radius: 10px;
 }
 
-.high { border-left: 5px solid red; }
-.medium { border-left: 5px solid orange; }
-.low { border-left: 5px solid green; }
+.status-green { color: lightgreen; }
+.status-red { color: red; }
 
-.progress {
-  height: 10px;
-  background: gray;
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.progress-bar {
-  height: 10px;
-  background: #38bdf8;
-  width: 0%;
-}
-
-.toast {
-  position: fixed;
-  bottom: 20px;
+.toggle {
+  position: absolute;
   right: 20px;
-  background: black;
-  padding: 10px;
-  border-radius: 5px;
-  display: none;
+  top: 20px;
 }
 </style>
 </head>
 
 <body>
 
+<button class="toggle" onclick="toggleTheme()">🌙</button>
+
 <div class="sidebar">
 <h2>DeployFlow 🚀</h2>
 <p>Dashboard</p>
-<p>Tasks</p>
 <p>Deployments</p>
+<p>System</p>
+<p>Logs</p>
 </div>
 
 <div class="main">
 
-<h1>DeployFlow Pro Max 🚀</h1>
+<h1>DevOps Monitoring Dashboard</h1>
 
-<div class="container">
-
-<div class="card">
-<h3>Task Manager</h3>
-
-<input id="taskInput" placeholder="Task">
-<select id="priority">
-<option value="low">Low</option>
-<option value="medium">Medium</option>
-<option value="high">High</option>
-</select>
-
-<button onclick="addTask()">Add</button>
-
-<ul id="taskList"></ul>
-
-<h4>Progress</h4>
-<div class="progress">
-<div class="progress-bar" id="progressBar"></div>
+<!-- Stats -->
+<div class="cards">
+<div class="card">Builds<br><h2 id="builds">0</h2></div>
+<div class="card">Success Rate<br><h2 id="success">100%</h2></div>
+<div class="card">Containers<br><h2>1</h2></div>
+<div class="card">Version<br><h2 id="version">v1.0</h2></div>
 </div>
 
+<!-- Chart -->
+<h3>Deployment Trends</h3>
+<canvas id="chart"></canvas>
+
+<!-- Table -->
+<h3>Deployment History</h3>
+<table>
+<tr><th>Version</th><th>Status</th><th>Time</th></tr>
+<tbody id="history"></tbody>
+</table>
+
+<!-- System Status -->
+<h3>System Status</h3>
+<p>Server: <span class="status-green">Running</span></p>
+<p>Docker: <span class="status-green">Active</span></p>
+<p>Jenkins: <span class="status-green">Connected</span></p>
+
+<!-- Actions -->
+<button onclick="deploy()">Trigger Deployment</button>
+<button onclick="failDeploy()">Simulate Failure</button>
+
 </div>
-
-<div class="card">
-<h3>Deployment Panel</h3>
-
-<p>Version: <span id="version">v3.0</span></p>
-<p>Build Time: <span id="time"></span></p>
-<p>Status: <span id="status">Deploying...</span></p>
-<p>Deploy Count: <span id="count">0</span></p>
-
-<button onclick="simulateDeploy()">Simulate Deploy</button>
-
-</div>
-
-</div>
-
-</div>
-
-<div class="toast" id="toast"></div>
 
 <script>
-let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-let count = localStorage.getItem("count") || 0;
+let history = JSON.parse(localStorage.getItem("history")) || [];
 
-function showToast(msg) {
-  let t = document.getElementById("toast");
-  t.innerText = msg;
-  t.style.display = "block";
-  setTimeout(()=> t.style.display="none", 2000);
+function deploy() {
+  let version = "v" + (history.length + 1);
+  let time = new Date().toLocaleTimeString();
+
+  history.unshift({version, status:"Success", time});
+  localStorage.setItem("history", JSON.stringify(history));
+
+  update(version);
 }
 
-function save() {
-  localStorage.setItem("tasks", JSON.stringify(tasks));
+function failDeploy() {
+  let version = "v" + (history.length + 1);
+  let time = new Date().toLocaleTimeString();
+
+  history.unshift({version, status:"Failed", time});
+  localStorage.setItem("history", JSON.stringify(history));
+
+  update(version);
 }
 
-function addTask() {
-  let text = taskInput.value;
-  let priority = document.getElementById("priority").value;
+function update(version) {
+  document.getElementById("version").innerText = version;
+  document.getElementById("builds").innerText = history.length;
 
-  if (!text) return;
+  let success = history.filter(h=>h.status==="Success").length;
+  let rate = Math.round((success/history.length)*100);
+  document.getElementById("success").innerText = rate+"%";
 
-  tasks.push({text, done:false, priority});
-  taskInput.value="";
-  save();
-  render();
-  showToast("Task Added 🚀");
+  renderHistory();
 }
 
-function toggleTask(i) {
-  tasks[i].done = !tasks[i].done;
-  save();
-  render();
-}
+function renderHistory() {
+  let table = document.getElementById("history");
+  table.innerHTML = "";
 
-function deleteTask(i) {
-  tasks.splice(i,1);
-  save();
-  render();
-}
-
-function render() {
-  let list = document.getElementById("taskList");
-  list.innerHTML = "";
-
-  let done = 0;
-
-  tasks.forEach((t,i)=>{
-    if(t.done) done++;
-
-    list.innerHTML += `
-    <li class="${t.priority}">
-      <span onclick="toggleTask(${i})">${t.text}</span>
-      <button onclick="deleteTask(${i})">❌</button>
-    </li>`;
+  history.forEach(h=>{
+    table.innerHTML += `
+    <tr>
+      <td>${h.version}</td>
+      <td class="${h.status==='Success'?'status-green':'status-red'}">${h.status}</td>
+      <td>${h.time}</td>
+    </tr>`;
   });
-
-  let percent = tasks.length ? (done/tasks.length)*100 : 0;
-  document.getElementById("progressBar").style.width = percent+"%";
 }
 
-function simulateDeploy() {
-  count++;
-  localStorage.setItem("count", count);
-  document.getElementById("count").innerText = count;
-
-  document.getElementById("status").innerText = "Deploying...";
-  setTimeout(()=>{
-    document.getElementById("status").innerText = "Live ✅";
-    showToast("Deployment Successful 🎉");
-  },2000);
+function toggleTheme() {
+  document.body.classList.toggle("light");
 }
 
-document.getElementById("time").innerText = new Date().toLocaleString();
+renderHistory();
 
-render();
+/* Chart */
+new Chart(document.getElementById("chart"), {
+  type: 'line',
+  data: {
+    labels: ["Mon","Tue","Wed","Thu","Fri","Sat"],
+    datasets: [{
+      label: "Deployments",
+      data: [1,2,3,4,2,5]
+    }]
+  }
+});
 </script>
 
 </body>
