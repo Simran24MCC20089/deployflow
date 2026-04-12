@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const axios = require('axios');
 
@@ -6,33 +7,60 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-let deployments = [];
+// MongoDB connect
+mongoose.connect('mongodb://127.0.0.1:27017/deployflow');
 
-// API: Get deployments
-app.get('/api/deployments', (req, res) => {
-    res.json(deployments);
+const Deployment = mongoose.model('Deployment', {
+  version: String,
+  status: String,
+  time: String
 });
 
-// API: Add deployment
-app.post('/api/deploy', (req, res) => {
-    const newDeploy = {
-        version: `v${deployments.length + 1}`,
-        status: 'Success',
-        time: new Date().toLocaleString()
-    };
-
-    deployments.unshift(newDeploy);
-    res.json(newDeploy);
+const Log = mongoose.model('Log', {
+  message: String,
+  time: String
 });
 
-// 🔥 Jenkins Status API
+// Get deployments
+app.get('/api/deployments', async (req, res) => {
+  const data = await Deployment.find().sort({_id:-1});
+  res.json(data);
+});
+
+// Add deployment
+app.post('/api/deploy', async (req, res) => {
+  const version = "v" + Date.now();
+
+  const newDeploy = new Deployment({
+    version,
+    status: "Success",
+    time: new Date().toLocaleString()
+  });
+
+  await newDeploy.save();
+
+  await new Log({
+    message: "New deployment " + version,
+    time: new Date().toLocaleString()
+  }).save();
+
+  res.json(newDeploy);
+});
+
+// Logs
+app.get('/api/logs', async (req, res) => {
+  const logs = await Log.find().sort({_id:-1});
+  res.json(logs);
+});
+
+// Jenkins
 app.get('/api/jenkins', async (req, res) => {
-    try {
-        const response = await axios.get('http://localhost:8080/api/json');
-        res.json({ status: "Connected", jobs: response.data.jobs.length });
-    } catch {
-        res.json({ status: "Disconnected", jobs: 0 });
-    }
+  try {
+    const response = await axios.get('http://localhost:8080/api/json');
+    res.json({status:"Connected", jobs: response.data.jobs.length});
+  } catch {
+    res.json({status:"Disconnected", jobs:0});
+  }
 });
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+app.listen(5000, () => console.log("Server running"));

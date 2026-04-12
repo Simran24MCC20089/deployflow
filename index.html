@@ -1,32 +1,89 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>DeployFlow Ultimate 🚀</title>
+<title>DeployFlow Pro 🚀</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body { font-family: Arial; background: #0f172a; color: white; }
-.container { display: flex; gap: 20px; flex-wrap: wrap; }
-.card { background: #1e293b; padding: 20px; border-radius: 10px; }
-button { padding: 10px; margin: 5px; }
+body { margin:0; font-family:Arial; background:#0f172a; color:white; }
+.sidebar {
+  width:220px; height:100vh; background:#020617;
+  position:fixed; padding:20px;
+}
+.sidebar p {
+  cursor:pointer; padding:10px;
+}
+.sidebar p:hover { background:#1e293b; }
+
+.main { margin-left:240px; padding:20px; }
+
+.card {
+  background:#1e293b;
+  padding:20px;
+  border-radius:10px;
+  margin-bottom:20px;
+}
+
+.hidden { display:none; }
+
+button {
+  padding:10px;
+  background:#38bdf8;
+  border:none;
+  cursor:pointer;
+}
 </style>
 </head>
 
 <body>
 
-<h1>DeployFlow Ultimate Dashboard 🚀</h1>
+<div class="sidebar">
+<h2>DeployFlow 🚀</h2>
 
-<div class="container">
-
-<div class="card">
-<h3>Deployments</h3>
-<button onclick="deploy()">Trigger Deploy</button>
-<ul id="deployList"></ul>
+<p onclick="show('dashboard')">Dashboard</p>
+<p onclick="show('deployments')">Deployments</p>
+<p onclick="show('logs')">Logs</p>
+<p onclick="show('system')">System</p>
 </div>
 
+<div class="main">
+
+<!-- DASHBOARD -->
+<div id="dashboard">
 <div class="card">
-<h3>Jenkins Status</h3>
-<p>Status: <span id="jenkinsStatus"></span></p>
-<p>Jobs: <span id="jobs"></span></p>
+<h2>Overview</h2>
+<p>Total Deployments: <span id="count"></span></p>
+<p>Jenkins: <span id="jenkins"></span></p>
+</div>
+
+<canvas id="chart"></canvas>
+</div>
+
+<!-- DEPLOYMENTS -->
+<div id="deployments" class="hidden">
+<div class="card">
+<h2>Deployments</h2>
+<button onclick="deploy()">Trigger Deployment</button>
+<ul id="deployList"></ul>
+</div>
+</div>
+
+<!-- LOGS -->
+<div id="logs" class="hidden">
+<div class="card">
+<h2>Logs</h2>
+<ul id="logList"></ul>
+</div>
+</div>
+
+<!-- SYSTEM -->
+<div id="system" class="hidden">
+<div class="card">
+<h2>System Status</h2>
+<p>Server: Running</p>
+<p>Docker: Active</p>
+<p>Jenkins: <span id="jenkins2"></span></p>
+</div>
 </div>
 
 </div>
@@ -34,42 +91,63 @@ button { padding: 10px; margin: 5px; }
 <script>
 const API = "http://localhost:5000/api";
 
-// Load deployments
+function show(page) {
+  document.querySelectorAll('.main > div').forEach(d=>d.classList.add('hidden'));
+  document.getElementById(page).classList.remove('hidden');
+}
+
 async function loadDeployments() {
-    const res = await fetch(API + "/deployments");
-    const data = await res.json();
+  const res = await fetch(API+'/deployments');
+  const data = await res.json();
 
-    let list = document.getElementById("deployList");
-    list.innerHTML = "";
+  document.getElementById("count").innerText = data.length;
 
-    data.forEach(d => {
-        list.innerHTML += `<li>${d.version} - ${d.status} - ${d.time}</li>`;
-    });
+  let list = document.getElementById("deployList");
+  list.innerHTML="";
+  data.forEach(d=>{
+    list.innerHTML += `<li>${d.version} - ${d.status}</li>`;
+  });
 }
 
-// Trigger deploy
 async function deploy() {
-    await fetch(API + "/deploy", { method: "POST" });
-    loadDeployments();
+  await fetch(API+'/deploy',{method:"POST"});
+  loadDeployments();
+  loadLogs();
 }
 
-// Jenkins status
+async function loadLogs() {
+  const res = await fetch(API+'/logs');
+  const data = await res.json();
+
+  let list = document.getElementById("logList");
+  list.innerHTML="";
+  data.forEach(l=>{
+    list.innerHTML += `<li>${l.message}</li>`;
+  });
+}
+
 async function loadJenkins() {
-    const res = await fetch(API + "/jenkins");
-    const data = await res.json();
+  const res = await fetch(API+'/jenkins');
+  const data = await res.json();
 
-    document.getElementById("jenkinsStatus").innerText = data.status;
-    document.getElementById("jobs").innerText = data.jobs;
+  document.getElementById("jenkins").innerText = data.status;
+  document.getElementById("jenkins2").innerText = data.status;
 }
 
-// Auto refresh
-setInterval(() => {
-    loadDeployments();
-    loadJenkins();
-}, 3000);
+setInterval(()=>{
+  loadDeployments();
+  loadLogs();
+  loadJenkins();
+},3000);
 
-loadDeployments();
-loadJenkins();
+// Chart
+new Chart(document.getElementById("chart"), {
+  type:'bar',
+  data:{
+    labels:["Deployments"],
+    datasets:[{label:"Count", data:[5], backgroundColor:"cyan"}]
+  }
+});
 </script>
 
 </body>
