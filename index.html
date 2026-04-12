@@ -1,34 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>DeployFlow Live Dashboard 🚀</title>
+<meta charset="UTF-8">
+<title>DeployFlow Dashboard</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
   margin: 0;
   font-family: 'Segoe UI';
-  background: linear-gradient(-45deg, #1e3a8a, #0f172a, #2563eb, #020617);
-  background-size: 400% 400%;
-  animation: gradient 10s ease infinite;
+  background: linear-gradient(135deg, #0f172a, #1e3a8a);
   color: white;
-}
-
-@keyframes gradient {
-  0% {background-position: 0%;}
-  50% {background-position: 100%;}
-  100% {background-position: 0%;}
 }
 
 /* HEADER */
 .header {
-  display: flex;
-  justify-content: space-between;
+  text-align: center;
   padding: 20px;
-}
-
-.toggle {
-  cursor: pointer;
+  font-size: 28px;
+  font-weight: bold;
 }
 
 /* LAYOUT */
@@ -39,20 +30,14 @@ body {
   flex-wrap: wrap;
 }
 
-/* CARDS */
+/* CARD */
 .card {
   flex: 1;
-  min-width: 280px;
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(10px);
+  min-width: 300px;
+  background: #1e293b;
   padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 0 20px rgba(0,0,0,0.5);
-  transition: 0.3s;
-}
-
-.card:hover {
-  transform: scale(1.03);
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
 
 /* BUTTON */
@@ -68,20 +53,11 @@ button:hover {
   background: #0ea5e9;
 }
 
-/* STATUS COLORS */
 .green { color: lightgreen; }
 .red { color: red; }
 
-/* LIGHT MODE */
-.light {
-  background: #f1f5f9;
-  color: black;
-}
-
 canvas {
-  background: rgba(0,0,0,0.3);
-  border-radius: 10px;
-  padding: 10px;
+  margin-top: 10px;
 }
 </style>
 </head>
@@ -89,35 +65,37 @@ canvas {
 <body>
 
 <div class="header">
-<h2>DeployFlow Live 🚀</h2>
-<div>
-<span id="clock"></span> |
-<button onclick="toggleTheme()">🌙</button>
-</div>
+DeployFlow Dashboard
 </div>
 
 <div class="container">
 
+<!-- DEPLOYMENTS -->
 <div class="card">
-<h3>🚀 Deployments</h3>
-<button onclick="deploy()">Trigger Deploy</button>
-<p>Total: <span id="count"></span></p>
+<h2>Deployments</h2>
+
+<button onclick="deploy()">Trigger Deployment</button>
+
 <ul id="deployList"></ul>
 </div>
 
+<!-- JENKINS -->
 <div class="card">
-<h3>⚙️ Jenkins Status</h3>
+<h2>Jenkins Status</h2>
+
 <p>Status: <span id="status"></span></p>
 <p>Jobs: <span id="jobs"></span></p>
 </div>
 
+<!-- LINE CHART -->
 <div class="card">
-<h3>📊 Deployment Trends</h3>
+<h2>Deployment Trend</h2>
 <canvas id="lineChart"></canvas>
 </div>
 
+<!-- PIE CHART -->
 <div class="card">
-<h3>📈 Success Ratio</h3>
+<h2>Success Ratio</h2>
 <canvas id="pieChart"></canvas>
 </div>
 
@@ -133,8 +111,7 @@ let lineChart = new Chart(document.getElementById("lineChart"), {
     datasets: [{
       label: "Deployments",
       data: [],
-      borderColor: "cyan",
-      fill: false
+      borderColor: "cyan"
     }]
   }
 });
@@ -145,7 +122,7 @@ let pieChart = new Chart(document.getElementById("pieChart"), {
     labels: ["Success", "Failed"],
     datasets: [{
       data: [1,0],
-      backgroundColor: ["lime", "red"]
+      backgroundColor: ["lime","red"]
     }]
   }
 });
@@ -154,19 +131,17 @@ async function loadDeployments() {
   const res = await fetch(API + "/deployments");
   const data = await res.json();
 
-  document.getElementById("count").innerText = data.length;
-
   let list = document.getElementById("deployList");
   list.innerHTML = "";
 
   let success = 0;
 
-  data.slice(0,5).forEach(d => {
-    list.innerHTML += `<li>${d.version} - ${d.status}</li>`;
+  data.forEach((d,i) => {
+    list.innerHTML += `<li>${d.version} - ${d.status} - ${d.time}</li>`;
     if(d.status==="Success") success++;
   });
 
-  // Update charts
+  // update charts
   lineChart.data.labels = data.map((_,i)=>i+1);
   lineChart.data.datasets[0].data = data.map((_,i)=>i+1);
   lineChart.update();
@@ -191,17 +166,6 @@ async function loadJenkins() {
     data.status==="Connected" ? "green" : "red";
 }
 
-function toggleTheme() {
-  document.body.classList.toggle("light");
-}
-
-// Clock
-setInterval(()=>{
-  document.getElementById("clock").innerText =
-    new Date().toLocaleTimeString();
-},1000);
-
-// Auto refresh
 setInterval(()=>{
   loadDeployments();
   loadJenkins();
