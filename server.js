@@ -10,12 +10,9 @@ app.use(express.json());
 /* =======================
    DATABASE CONNECTION
 ======================= */
-mongoose.connect('mongodb://127.0.0.1:27017/deployflow', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log("MongoDB Connected"))
-.catch(err => console.log("DB Error:", err));
+mongoose.connect('mongodb://127.0.0.1:27017/deployflow')
+  .then(() => console.log("MongoDB Connected"))
+  .catch(err => console.log("DB Error:", err));
 
 /* =======================
    MODELS
@@ -34,18 +31,15 @@ const Log = mongoose.model('Log', {
 /* =======================
    DEPLOYMENTS
 ======================= */
-
-// Get all deployments
 app.get('/api/deployments', async (req, res) => {
   try {
     const data = await Deployment.find().sort({ _id: -1 });
     res.json(data);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch deployments" });
   }
 });
 
-// Add deployment
 app.post('/api/deploy', async (req, res) => {
   try {
     const count = await Deployment.countDocuments();
@@ -65,7 +59,7 @@ app.post('/api/deploy', async (req, res) => {
     }).save();
 
     res.json(newDeploy);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Deployment failed" });
   }
 });
@@ -77,7 +71,7 @@ app.get('/api/logs', async (req, res) => {
   try {
     const logs = await Log.find().sort({ _id: -1 });
     res.json(logs);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch logs" });
   }
 });
@@ -92,7 +86,7 @@ app.get('/api/jenkins', async (req, res) => {
       status: "Connected",
       jobs: response.data.jobs.length
     });
-  } catch (err) {
+  } catch {
     res.json({
       status: "Disconnected",
       jobs: 0
@@ -101,7 +95,7 @@ app.get('/api/jenkins', async (req, res) => {
 });
 
 /* =======================
-   JENKINS JOB LIST (NEW)
+   JENKINS JOB LIST
 ======================= */
 app.get('/api/jenkins/jobs', async (req, res) => {
   try {
@@ -113,7 +107,7 @@ app.get('/api/jenkins/jobs', async (req, res) => {
     }));
 
     res.json(jobs);
-  } catch (err) {
+  } catch {
     res.json([]);
   }
 });

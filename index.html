@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DeployFlow DevOps System</title>
+<title>DeployFlow DevOps</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -10,11 +10,12 @@
 body {
   margin: 0;
   font-family: 'Segoe UI';
-  background: #0b1e2d;
+  background: linear-gradient(135deg, #0f172a, #1e3a8a);
   color: white;
   transition: 0.3s;
 }
 
+/* LIGHT MODE */
 .light {
   background: #f1f5f9;
   color: black;
@@ -25,11 +26,14 @@ body {
   display: flex;
   justify-content: space-between;
   padding: 15px 20px;
-  background: #06141f;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(10px);
 }
 
-.navbar button {
-  padding: 5px 10px;
+/* MOON BUTTON */
+.theme-btn {
+  font-size: 20px;
+  cursor: pointer;
 }
 
 /* SIDEBAR */
@@ -42,8 +46,9 @@ body {
 }
 
 .sidebar p {
-  cursor: pointer;
   padding: 10px;
+  cursor: pointer;
+  border-radius: 6px;
 }
 
 .sidebar p:hover {
@@ -56,18 +61,39 @@ body {
   padding: 20px;
 }
 
+/* CARDS */
 .card {
-  background: #1e293b;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 15px;
   margin-bottom: 20px;
+  transition: 0.3s;
 }
 
-.hidden { display:none; }
+.card:hover {
+  transform: translateY(-5px);
+}
 
+/* BUTTON */
+.deploy-btn {
+  padding: 10px 15px;
+  background: #38bdf8;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.deploy-btn:hover {
+  background: #0ea5e9;
+}
+
+/* STATUS */
 .green { color: lightgreen; }
 .red { color: red; }
 
+/* TABLE */
 table {
   width: 100%;
 }
@@ -75,40 +101,61 @@ table {
 td, th {
   padding: 8px;
 }
+
+/* NOTIFICATION */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #22c55e;
+  padding: 10px 20px;
+  border-radius: 5px;
+  display: none;
+}
 </style>
 </head>
 
 <body>
 
+<!-- NAVBAR -->
 <div class="navbar">
-<h2>DeployFlow</h2>
-<button onclick="toggleTheme()">Toggle Theme</button>
+<h2>DeployFlow 🚀</h2>
+<div>
+<span id="clock"></span>
+<span class="theme-btn" onclick="toggleTheme()">🌙</span>
+</div>
 </div>
 
+<!-- SIDEBAR -->
 <div class="sidebar">
 <p onclick="show('dashboard')">Dashboard</p>
-<p onclick="show('jenkins')">Jenkins Jobs</p>
+<p onclick="show('jenkins')">Jenkins</p>
 <p onclick="show('logs')">Logs</p>
 </div>
 
+<!-- MAIN -->
 <div class="main">
 
 <!-- DASHBOARD -->
 <div id="dashboard">
+
 <div class="card">
 <h3>Total Deployments: <span id="count"></span></h3>
 <h3>Jenkins: <span id="jenkinsStatus"></span></h3>
+
+<button class="deploy-btn" onclick="deploy()">🚀 Trigger Deployment</button>
 </div>
 
 <div class="card">
 <canvas id="chart"></canvas>
 </div>
+
 </div>
 
-<!-- JENKINS JOBS -->
+<!-- JENKINS -->
 <div id="jenkins" class="hidden">
 <div class="card">
-<h2>Jenkins Job List</h2>
+<h3>Jenkins Jobs</h3>
 <table>
 <tr><th>Name</th><th>Status</th></tr>
 <tbody id="jobs"></tbody>
@@ -119,26 +166,35 @@ td, th {
 <!-- LOGS -->
 <div id="logs" class="hidden">
 <div class="card">
-<h2>Activity Logs</h2>
+<h3>Logs</h3>
 <ul id="logList"></ul>
 </div>
 </div>
 
 </div>
 
+<!-- NOTIFICATION -->
+<div class="toast" id="toast">Deployment Successful 🚀</div>
+
 <script>
 const API = "http://localhost:5000/api";
 
 /* NAVIGATION */
 function show(page) {
-  document.querySelectorAll(".main > div").forEach(d=>d.classList.add("hidden"));
-  document.getElementById(page).classList.remove("hidden");
+  document.querySelectorAll(".main > div").forEach(d=>d.style.display="none");
+  document.getElementById(page).style.display="block";
 }
 
 /* THEME */
 function toggleTheme() {
   document.body.classList.toggle("light");
 }
+
+/* CLOCK */
+setInterval(()=>{
+  document.getElementById("clock").innerText =
+    new Date().toLocaleTimeString();
+},1000);
 
 /* CHART */
 let chart = new Chart(document.getElementById("chart"), {
@@ -153,7 +209,7 @@ let chart = new Chart(document.getElementById("chart"), {
   }
 });
 
-/* LOAD DEPLOYMENTS */
+/* DEPLOYMENTS */
 async function loadDeployments() {
   const res = await fetch(API + "/deployments");
   const data = await res.json();
@@ -165,15 +221,22 @@ async function loadDeployments() {
   chart.update();
 }
 
-/* JENKINS STATUS */
-async function loadJenkins() {
-  const res = await fetch(API + "/jenkins");
-  const data = await res.json();
-
-  document.getElementById("jenkinsStatus").innerText = data.status;
+/* DEPLOY BUTTON */
+async function deploy() {
+  await fetch(API + "/deploy", { method: "POST" });
+  showToast();
+  loadDeployments();
+  loadLogs();
 }
 
-/* JENKINS JOBS */
+/* TOAST */
+function showToast() {
+  let t = document.getElementById("toast");
+  t.style.display = "block";
+  setTimeout(()=>t.style.display="none",2000);
+}
+
+/* JENKINS */
 async function loadJobs() {
   const res = await fetch(API + "/jenkins/jobs");
   const data = await res.json();
@@ -181,13 +244,11 @@ async function loadJobs() {
   let table = document.getElementById("jobs");
   table.innerHTML = "";
 
-  data.forEach(job=>{
+  data.forEach(j=>{
     table.innerHTML += `
     <tr>
-      <td>${job.name}</td>
-      <td class="${job.color.includes('blue')?'green':'red'}">
-        ${job.color}
-      </td>
+      <td>${j.name}</td>
+      <td class="${j.status==='Success'?'green':'red'}">${j.status}</td>
     </tr>`;
   });
 }
@@ -205,18 +266,26 @@ async function loadLogs() {
   });
 }
 
+/* JENKINS STATUS */
+async function loadJenkins() {
+  const res = await fetch(API + "/jenkins");
+  const data = await res.json();
+
+  document.getElementById("jenkinsStatus").innerText = data.status;
+}
+
 /* AUTO REFRESH */
 setInterval(()=>{
   loadDeployments();
-  loadJenkins();
   loadJobs();
   loadLogs();
+  loadJenkins();
 },3000);
 
 loadDeployments();
-loadJenkins();
 loadJobs();
 loadLogs();
+loadJenkins();
 </script>
 
 </body>
